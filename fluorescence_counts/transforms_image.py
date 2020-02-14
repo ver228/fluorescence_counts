@@ -13,37 +13,40 @@ import numpy as np
 class AddRandomRectangle():
     def __init__(self, 
                  rect_rel_size = (0.25, 1.), 
-                 rect_int_range = (0.1, 0.5),
+                 rect_int_range = (0.05, 0.25),
+                 img_shape = (128, 128),
                  prob = 0.5
                  
                  ):
         self.rect_rel_size = rect_rel_size
         self.rect_int_range = rect_int_range
+        self.img_shape = [int(x) for x in img_shape]
         self.prob = prob
+        
     
     def __call__(self, image, target):
         
          
         if random.random() < self.prob:
-            img_shape = image.shape[:2]
             
             box_size = []
-            for s in img_shape:
+            for s in self.img_shape:
                 b = random.randint(int(self.rect_rel_size[0]*s), int(self.rect_rel_size[1]*s)) 
                 box_size.append(b)
             
-            corner = [random.randint(0, s-1) for s in img_shape]
+            corner = [random.randint(0, s-1) for s in self.img_shape]
             angle = random.randint(-180, 180)
             int_level = random.uniform(0.1, 0.5)
             
             box = cv2.boxPoints((corner, box_size, angle))
             box = np.int0(box)
             
-            shape_noise = np.zeros(img_shape, np.float32)
+            shape_noise = np.zeros(self.img_shape, np.float32)
             cv2.drawContours(shape_noise, [box], 0, int_level, -1)
             
             shape_noise = cv2.GaussianBlur(shape_noise, (25, 25), 0)
             image = image + shape_noise
+            
         return image, target
 
 

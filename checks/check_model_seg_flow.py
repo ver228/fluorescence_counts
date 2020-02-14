@@ -16,7 +16,7 @@ from cell_localization.models import get_model
 from cell_localization.utils import get_device
 from cell_localization.flow import FlowCellSegmentation
 from cell_localization.evaluation import get_masks_metrics, get_IoU_best_match
-
+from cell_localization.evaluation import segmentation2contours
 
 from pathlib import Path
 import torch
@@ -40,12 +40,18 @@ if __name__ == '__main__':
     bn = 'BBBC038-crops+sameimages+nobadcrops+FNone+segmentation+noise2noise+roi128_seg+unet-resnet101+n2n_crossentropy+W1-1-10_20191124_183746_adam_lr1e-05_wd0.0_batch64'
     #bn = 'BBBC038-crops+sameimages+nobadcrops+FNone+segmentation+noise2noise+roi128_seg+unet-resnet101+n2n_crossentropy+W1-1-5_20191125_131232_adam_lr1e-05_wd0.0_batch64'
     #bn = 'BBBC038-crops+sameimages+nobadcrops+FNone+segmentation+noise2noise+roi128_seg+unet-resnet101+n2n_WCE_20191125_154036_adam_lr1e-05_wd0.0_batch64'
+    
+    bn = 'BBBC038-crops+sameimages+nobadcrops+FNone+noise2noise+segmentation+roi128_seg+dense-unet+n2n_crossentropy1-1-20_20191129_162216_adam_lr1e-05_wd0.0_batch60'
+    
+    bn = 'BBBC038-crops+sameimages+nobadcrops+FNone+noise2noise+segmentation+roi128_seg+dense-unet+n2n+detach_crossentropy1-1-5_20191202_140128_adam_lr1e-05_wd0.0_batch60'
+    bn = 'BBBC038-crops+sameimages+nobadcrops+FNone+segmentation+noise2noise+roi128_seg+unet-densenet121+n2n+detach_crossentropy-W1-1-5_20191203_155822_adam_lr1e-05_wd0.0_batch96'
+    
     results_dir = Path.home() / 'workspace/localization/results/segmentation/BBBC038-crops/'
     
-    bn = 'BBBC038-fluorescence+Flymphocytes+roi96_seg+unet-resnet101_crossentropy+W1-1-5_20191126_094934_adam_lr0.000128_wd0.0_batch128'
+    #bn = 'BBBC038-fluorescence+Flymphocytes+roi96_seg+unet-resnet101_crossentropy+W1-1-5_20191126_094934_adam_lr0.000128_wd0.0_batch128'
     #bn = 'BBBC038-fluorescence+Flymphocytes+roi96_seg+unet-resnet101_crossentropy_20191120_170207_adam_lr0.000128_wd0.0_batch128'
     
-    results_dir = Path.home() / 'workspace/localization/results/segmentation/BBBC038/fluorescence/BBBC038-fluorescence/'
+    #results_dir = Path.home() / 'workspace/localization/results/segmentation/BBBC038/fluorescence/BBBC038-fluorescence/'
     
     
     #bn = 'BBBC038-fluorescence+Flymphocytes+roi96_seg+unet-resnet101_crossentropy+W1-1-10_20191120_213741_adam_lr0.000128_wd0.0_batch128'
@@ -96,7 +102,7 @@ if __name__ == '__main__':
     gen = FlowCellSegmentation(val_dir, 
                 scale_int = (0, 255.),
                 valid_labels = [1],
-                is_preloaded = True,
+                is_preloaded = True
                 )
     #%%
     metrics = np.zeros(5)
@@ -106,7 +112,7 @@ if __name__ == '__main__':
     #inds2check = [1, 3, 10, 20]
     
     for ind in tqdm.tqdm(inds2check):
-        
+        #%%
         image, target = gen.read_full(ind) #I am evaluating one image at the time because some images can have seperated size
         
         #image /= image.max()
@@ -127,11 +133,13 @@ if __name__ == '__main__':
         prob_maps = torch.softmax(xhat, dim=1)
         prob_maps = np.rollaxis(prob_maps[0].cpu().detach().numpy(), 0, 3)
         img = image[0].cpu().numpy()
-        #%%
+        
         
         true_cells_mask = (target['segmentation_mask']==1).cpu().numpy().astype(np.uint8)
         pred_cells_mask = (pred_segmentation == 1).astype(np.uint8)
         
+        pred_cell_contours = segmentation2contours(pred_cells_mask, kernel_size = 5)
+        true_cell_contours = segmentation2contours(true_cells_mask, kernel_size = 3)
         
         pred_coords, target_coords, IoU, agg_inter, agg_union = get_masks_metrics(true_cells_mask, pred_cells_mask)
         TP, FP, FN, pred_ind, true_ind = get_IoU_best_match(IoU)
@@ -140,10 +148,10 @@ if __name__ == '__main__':
         metrics += (TP, FP, FN, agg_inter, agg_union) 
         
         
-        #figsize = (40, 160)
+        figsize = (40, 160)
         #figsize = (20, 80)
         #figsize = (5, 20)
-        figsize = None
+        #figsize = None
         
         if not is_n2n:
             fig, axs = plt.subplots(1, 4, figsize =figsize, sharex = True, sharey = True)
@@ -176,6 +184,13 @@ if __name__ == '__main__':
             axs[1].plot(target_bad[:, 0], target_bad[:, 1], '.', color = 'r')
             axs[1].plot(pred_coords[pred_ind, 0], pred_coords[pred_ind, 1], 'o', color='g')
         
+        
+        #axs[2].imshow(target['segmentation_mask'])
+        axs[1].imshow(img, cmap = 'gray')
+        for cnt in true_cell_contours:
+            axs[1].plot(cnt[:, 0], cnt[:, 1], 'r')
+        for cnt in pred_cell_contours:
+            axs[1].plot(cnt[:, 0], cnt[:, 1], 'g')
     #%%
     print(model_path)
     TP, FP, FN,  agg_inter, agg_union = metrics

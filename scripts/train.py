@@ -162,7 +162,11 @@ def train(
         model = get_model(model_name_r, n_ch_in, n_ch_out, loss_type)
         
         if is_n2n:
-            if n2n_type == '+frozen':
+            n2n_types = n2n_type.split('+')
+            
+            detach_n2n = 'detach' in n2n_types
+            
+            if 'frozen' in n2n_types:
                 model = ModelWithN2N(n_ch_in, model, n2n_freeze = True)
                 n2n_model_path = Path.home() / 'workspace/localization/results/locmax_detection/noise2noise/BBBC038-crops/BBBC038-crops+FNone+noise2noise+roi64_unet-n2n_l1smooth_20191114_121612_adam_lr1e-05_wd0.0_batch256/checkpoint-99.pth.tar'
                 state_n2n = torch.load(n2n_model_path, map_location = 'cpu')
@@ -174,7 +178,8 @@ def train(
                                      model, 
                                      n2n_freeze = False,
                                      n2n_criterion = n2n_criterion,
-                                     n2n_lambda_criterion = n2n_lambda_criterion
+                                     n2n_lambda_criterion = n2n_lambda_criterion,
+                                     detach_n2n = detach_n2n
                                      )
     
     

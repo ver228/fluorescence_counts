@@ -40,7 +40,8 @@ class ModelWithN2N(nn.Module):
                  n2n_freeze = False,
                  n2n_criterion = None,
                  n2n_lambda_criterion = 100,
-                 n2n_return = False
+                 n2n_return = False,
+                 detach_n2n = False
                  ):
         super().__init__()
         
@@ -50,6 +51,8 @@ class ModelWithN2N(nn.Module):
         
         self.n2n_return = n2n_return
         self.n2n_freeze = n2n_freeze
+        self.detach_n2n = detach_n2n
+        
         self.n2n = get_mapping_network(n_channels, n_channels, model_type = 'unet-n2n')
         
         if self.n2n_freeze:
@@ -60,14 +63,13 @@ class ModelWithN2N(nn.Module):
             self.n2n_lambda_criterion = n2n_lambda_criterion
             
             
-    def forward(self, x_in, targets = None):
-        x_n2n = self.n2n(x_in)
-        outs = self.main_model(x_n2n, targets)
+    def forward(self, x, targets = None):
+        x_n2n = self.n2n(x)
+        xin = x_n2n.detach() if self.detach_n2n else x_n2n
+        outs = self.main_model(xin, targets)
         
         if not self.n2n_freeze  and self.n2n_criterion is not None and self.training and (targets is not None):
             x_target = torch.stack([t['n2n_target'] for t in targets])
-            
-            
             n2n_loss = self.n2n_lambda_criterion*self.n2n_criterion(x_n2n, x_target)
             
             if isinstance(outs, dict):

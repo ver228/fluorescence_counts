@@ -34,8 +34,21 @@ if __name__ == '__main__':
     #bn = 'BBBC038-fluorescence+Flymphocytes+roi96_seg+unet-resnet101_crossentropy+W1-1-5_20191126_094934_adam_lr0.000128_wd0.0_batch128'
     #results_dir = Path.home() / 'workspace/localization/results/segmentation/BBBC038/fluorescence/BBBC038-fluorescence/'
     
-    bn = 'BBBC038-fluorescence+Flymphocytes+roi96_seg+unet-resnet101_crossentropy+W1-1-10_20191120_213741_adam_lr0.000128_wd0.0_batch128'
-    results_dir = Path.home() / 'Desktop/nuclei_datasets/'
+    #bn = 'BBBC038-fluorescence+Flymphocytes+roi96_seg+unet-resnet101_crossentropy+W1-1-10_20191120_213741_adam_lr0.000128_wd0.0_batch128'
+    #results_dir = Path.home() / 'Desktop/nuclei_datasets/'
+    
+    #bn = 'BBBC038-crops+sameimages+nobadcrops+FNone+segmentation+noise2noise+roi128_seg+dense-unet+n2n_crossentropy-W1-1-5_20191128_163504_adam_lr1e-05_wd0.0_batch60'
+    #bn = 'BBBC038-crops+sameimages+nobadcrops+FNone+segmentation+noise2noise+roi128_seg+unet-resnet101+n2n_crossentropy+W1-1-5_20191126_141820_adam_lr1e-05_wd0.0_batch64'
+    #bn = 'BBBC038-crops+sameimages+nobadcrops+FNone+noise2noise+segmentation+roi128_seg+dense-unet+n2n_crossentropy1-1-20_20191129_174059_adam_lr1e-05_wd0.0_batch60'
+    #bn = 'BBBC038-crops+sameimages+nobadcrops+FNone+noise2noise+segmentation+roi128_seg+dense-unet+n2n_crossentropy1-1-20_20191129_184633_adam_lr1e-05_wd0.0_batch60'
+    
+    #bn = 'BBBC038-crops+sameimages+nobadcrops+FNone+noise2noise+segmentation+roi128_seg+dense-unet+n2n_crossentropy1-1-5_20191130_093637_adam_lr1e-05_wd0.0_batch60'
+    #bn = 'BBBC038-crops+sameimages+nobadcrops+FNone+noise2noise+segmentation+roi128_seg+dense-unet+n2n+detach_crossentropy1-1-5_20191202_122249_adam_lr1e-05_wd0.0_batch112'
+    
+    #bn = 'BBBC038-crops+sameimages+nobadcrops+FNone+segmentation+noise2noise+roi128_seg+dense-unet+n2n_crossentropy-W1-1-5_20191202_130931_adam_lr1e-05_wd0.0_batch90'
+    bn = 'BBBC038-crops+sameimages+nobadcrops+FNone+noise2noise+segmentation+roi128_seg+dense-unet+n2n+detach_crossentropy1-1-5_20191202_140128_adam_lr1e-05_wd0.0_batch60'
+    results_dir = Path.home() / 'workspace/localization/results/segmentation/BBBC038-crops/'
+    
     #model_path = results_dir / bn / 'checkpoint-199.pth.tar'
     
     #model_path = results_dir / bn / 'checkpoint.pth.tar'
@@ -76,7 +89,7 @@ if __name__ == '__main__':
             '/Users/avelinojaver/OneDrive - Nexus365/heba/spheroids/sample_nanog_mastrixplate2_20x/H - 6(fld 24 wv UV - DAPI z 4).tif',
             ]
     #%%
-    for fname in fnames[-1:]:
+    for fname in fnames:
         
         #ind = 17
         #image, target = val_flow.read_full(ind) #I am evaluating one image at the time because some images can have seperated size
@@ -86,8 +99,9 @@ if __name__ == '__main__':
         
         
         if max(image.shape) > 1000:
-            image =  image[800:1300, 900:1400]
-            image /= image.max()
+            image =  image[800:1300, 900:1400] # i am croping this because otherwise it takes too long on cpu
+        
+        image /= image.max()
         #else:
         #image /= 255
         #image /= image.max()
@@ -122,21 +136,23 @@ if __name__ == '__main__':
         #markers[labels==0] = 0
         #plt.imshow(markers)
         
-        
+        #%%
         
         figsize = (80, 20)
         #figsize = (40, 10)
         #figsize = (5, 20)
         #figsize = None
         
-        n_subplots = 4 + (1 if is_n2n else 0)
+        n_subplots = 5 + (1 if is_n2n else 0)
         fig, axs = plt.subplots(1, n_subplots, figsize =figsize, sharex = True, sharey = True)
         #fig, axs = plt.subplots(1, n_subplots,  sharex = True, sharey = True)
         
         if is_n2n:
-            axs[1].imshow(x_n2n, cmap = 'gray')
-        
-        axs[0].imshow(img, cmap = 'gray')
+            axs[1].imshow(x_n2n, cmap = 'gray', vmin=0, vmax = 1.)
+            axs[2].imshow(img - x_n2n, cmap = 'gray')
+            
+            
+        axs[0].imshow(img, cmap = 'gray', vmin=0, vmax = 1.)
         
         
         axs[-1].imshow(img, cmap = 'gray')

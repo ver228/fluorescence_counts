@@ -36,7 +36,7 @@ class AffineTransformBounded(AffineTransform):
 #        if self.max_crop_size is not None:
 #            _max_zoom = self.max_crop_size/max(image.shape)
 #            _zoom = min(_max_zoom,_zoom)
-#            
+        
         if self.min_crop_size is not None:
             _min_zoom = self.min_crop_size/max(image.shape)
             _zoom = max(_min_zoom,_zoom)
@@ -52,11 +52,11 @@ class AffineTransformBounded(AffineTransform):
         # (i.e., the rotation components of the matrix)
         M = cv2.getRotationMatrix2D((cX, cY), theta, _zoom)
         cos_val = np.abs(M[0, 0])
-        sin_val = np.abs(M[0, 1])
+        sin_val = np.abs(M[0, 1]) #this value is already scaled (zoomed) in the rotation matrix
      
         # compute the new bounding dimensions of the image
-        nW = int(((h * sin_val) + (w * cos_val))*_zoom)
-        nH = int(((h * cos_val) + (w * sin_val))*_zoom)
+        nW = int(((h * sin_val) + (w * cos_val)))
+        nH = int(((h * cos_val) + (w * sin_val)))
      
         # adjust the rotation matrix to take into account translation
         M[0, 2] += (nW / 2) - cX
@@ -168,7 +168,7 @@ class MaskedCrop(MaskedBase):
 class MaskedBackground(MaskedBase):
     def __init__(self, 
                  *args, 
-                 crop_size = 128,
+                 crop_size = (128, 128),
                  zoom_range = (0.9, 1.1), 
                  **argkws):
         
@@ -179,7 +179,7 @@ class MaskedBackground(MaskedBase):
                 AffineTransform(zoom_range = zoom_range, border_mode = cv2.BORDER_REFLECT_101),
                 RandomVerticalFlip(),
                 RandomHorizontalFlip(),
-                AddRandomRectangle()
+                AddRandomRectangle(img_shape = crop_size)
                 ]
         self.transforms_random = Compose(transforms)
     
@@ -320,7 +320,7 @@ class FluoMergedFlow(Dataset):
         
         cnt_output_type = output_type.split('+')
         for c in cnt_output_type:
-            assert c in self._valid_output_types, f'Invalid output_type `{c}`'
+            assert c in self._valid_output_types, f'Invalid output_type `{c}`. Valid types are : `{self._valid_output_types}`'
         try:
             cnt_output_type.remove('noise2noise')
             self.is_return_n2n = True
@@ -329,7 +329,6 @@ class FluoMergedFlow(Dataset):
         self.contour_outputs = Contours2Outputs(cnt_output_type, channel_lasts = False)
         
         transforms = [
-                AddRandomRectangle(), 
                 RandomBlur(), 
                 AddGaussNoise(), 
                 ConvertToPoissonNoise(int_scale = self.int_scale)
@@ -629,13 +628,13 @@ def flow_BBBC38_crops():
                          bad_crops = bad_crops,
                          backgrounds = backgrounds,
                          
-                         output_type =  'centroids+noise2noise+segmentation',#'centroids+noise2noise',#'segmentation+noise2noise',#'point-inside-contour',#'centroids',#
+                         output_type =  'noise2noise+segmentation',#'centroids+noise2noise+segmentation',#'centroids+noise2noise',#'segmentation+noise2noise',#'point-inside-contour',#'centroids',#
                          
                          img_size = (128, 128),
                          int_scale = (0, 255),
                          
-                         n_cells_per_crop = (0, 7),
-                         n_bgnd_per_crop = (0, 7),
+                         n_cells_per_crop = (15, 15),
+                         n_bgnd_per_crop = (0, 0),
                          
                          crop_intensity_range = (0.2, 1.),
                          fg_quantile_range = (0, 10),
@@ -671,9 +670,9 @@ if __name__ == '__main__':
     #   xin, xout = gen[0]
    
    
-    for _ in tqdm.tqdm(range(100000)):
+    for _ in tqdm.tqdm(range(10)):
         xin, xout = gen._sample()
-        continue
+        
         n_per_channel = xin.shape[0]
         
         if gen.output_type == 'separated-channels':
@@ -685,7 +684,7 @@ if __name__ == '__main__':
                 else:
                     x = np.rollaxis(x, 0, 3)
                 
-        #%%
+        
         n_plots = 3 if 'n2n_target' in xout else 2
             
         fig, axs = plt.subplots(1, n_plots, sharex=True, sharey=True)

@@ -118,13 +118,19 @@ class Contours2Outputs(object):
         
         seg_mask = np.zeros(img_shape, dtype = np.uint8)
         
-        contours_i = sorted(contours_i, key = cv2.contourArea)
-        for cnt in contours_i:
+        
+        dat = [(cv2.minAreaRect(x)[1], x) for x in contours_i]
+        
+            
+        dat = sorted(dat, key = lambda x : max(x[0]))
+        for _, cnt in dat:
             cv2.drawContours(seg_mask, [cnt], 0, 1, -1)
             
-            
-        thickness = 1
-        for cnt in contours_i:
+        
+        
+        for bbox, cnt in dat:
+            thickness = 2 if min(bbox) > 8 else 1
             cv2.drawContours(seg_mask, [cnt], 0, 2, thickness)
+        
         
         return dict(segmentation_mask = seg_mask.astype(np.int))
